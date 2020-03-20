@@ -7,8 +7,13 @@ Desktop.ini
 
 # Recycle Bin used on file shares
 $RECYCLE.BIN/
+
+# IDE stuff
 venv/
 .idea/
+
+# Too big for git
+logisticRegression/data/
 
 # Windows Installer files
 *.cab
