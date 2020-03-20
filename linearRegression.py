@@ -111,4 +111,4 @@ plt.plot(x_train, predicted, "--", label="Predictions", alpha=0.5)
 
 # Legend and plot show
 plt.legend(loc="best")
-plt.show()
+plt.show()  # show plot
