@@ -23,7 +23,7 @@ class LinearRegressionModel(nn.Module):
 
 input_dim = 1
 output_dim = 1
-learning_rate = 0.01
+learning_rate = 0.001
 epochs = 1000
 
 model = LinearRegressionModel(input_dim, output_dim)
@@ -61,13 +61,12 @@ for epoch in range(epochs):
     # labels = torch.tensor(torch.from_numpy(y_train), requires_grad=True)
     inputs = torch.from_numpy(x_train)
     inputs.requires_grad = True
-    if torch.cuda.is_available() and usingGPU:
-        inputs = inputs.cuda()
 
     labels = torch.from_numpy(y_train)
     labels.requires_grad = True
     if torch.cuda.is_available() and usingGPU:
         labels = labels.cuda()
+        inputs = inputs.cuda()
 
     # Clears gradients w.r.t. parameters
     optimizer.zero_grad()
