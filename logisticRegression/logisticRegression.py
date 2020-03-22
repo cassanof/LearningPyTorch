@@ -1,4 +1,6 @@
-# Used often for classification, example:
+# Made by ElleVen, Federico Cassano
+#
+# logR is often used for classification, example:
 # Outputs probability between email spam and not spam
 #
 # Linear Regression Vs logistic Regression
@@ -13,6 +15,7 @@
 #   Input("PayPal payment number:492054180")
 #       Output: prob=0.3
 #
+# Aim of logR: reduce Cross Entropy Loss (with linR we want to reduce Mean Squared Error)
 # Steps to achieve this:
 #   Step 1: Load Dataset
 #   Step 2: Make Dataset Iterable
@@ -28,8 +31,11 @@ import torchvision.transforms as transforms
 import torchvision.datasets as dsets
 import torch.autograd
 import matplotlib.pyplot as plt
-import numpy as np
-from torch.autograd import Variable
+from datetime import datetime
+
+usingGPU = False
+saveModel = False
+loadModel = False
 
 
 # STEP 3: Create model class, same as linear regression
@@ -53,8 +59,8 @@ train_dataset = dsets.MNIST(root='./data', train=True, transform=transforms.ToTe
 test_dataset = dsets.MNIST(root='./data', train=False, transform=transforms.ToTensor())
 
 # STEP 2: Make Dataset Iterable
-batch_size = 100
-n_iters = 3000
+batch_size = 20
+n_iters = 5000
 
 epochs = int(n_iters / (len(train_dataset) / batch_size))
 
@@ -63,10 +69,15 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch
 # shuffle=false because we are going to do only one forward pass
 
 # STEP 4: Instantiate Model class
-input_dim = 28*28  # train_dataset[0][0].size() = [1, 28, 28]
+input_dim = 28 * 28  # train_dataset[0][0].size() = [1, 28, 28]
 output_dim = 10
 
 model = LogisticRegressionModel(input_dim, output_dim)
+if torch.cuda.is_available() and usingGPU:
+    model = model.cuda()
+
+if loadModel:
+    model.load_state_dict(torch.load('model.pkl'))
 
 # STEP 5: Instantiate Loss Class
 # With Linear Regression we used MSE, but with Logistic we use Cross Entropy Loss
@@ -77,7 +88,7 @@ criterion = nn.CrossEntropyLoss()
 # pretty much whats happening:
 #   parameters = parameters - learning_rate * parameters_gradients
 # it updates model's parameters every iteration
-learning_rate = 0.001
+learning_rate = 0.05
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 # print(model.parameters())
 # print(len(list(model.parameters())))
@@ -94,12 +105,18 @@ optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 #   6. Update parameters using grads
 #   7. Repeat
 i = 0
+startTime = datetime.now()
 for epoch in range(epochs):
-    for i, (images, labels) in enumerate(train_loader):
+    for j, (images, labels) in enumerate(train_loader):
         # Load images as tensor
-        # TODO: Fix this tensor/Variable bullshit
-        images = torch.tensor(images.view(-1, 28, 28))
-        labels = torch.tensor(labels)
+        if torch.cuda.is_available() and usingGPU:
+            images = torch.tensor(images.view(-1, 28 * 28))
+            images = images.cuda()
+            labels = torch.tensor(labels)
+            labels = labels.cuda()
+        else:
+            images = torch.tensor(images.view(-1, 28 * 28))
+            labels = torch.tensor(labels)
 
         # Clear gradients w.r.t. parameters
         optimizer.zero_grad()
@@ -117,14 +134,18 @@ for epoch in range(epochs):
         optimizer.step()
 
         i += 1
-        if 1 % 500 == 0:
+        if i % 100 == 0:
             # Calculate accuracy
             correct = 0
             total = 0
             # Iterate through test dataset
             for images, labels in test_loader:
                 # load images to torch tensor
-                images = torch.tensor(images.view)
+                if torch.cuda.is_available() and usingGPU:
+                    images = torch.tensor(images.view(-1, 28 * 28))
+                    images = images.cuda()
+                else:
+                    images = torch.tensor(images.view(-1, 28 * 28))
 
                 # Forward pass only to get output/logits
                 outputs = model(images)
@@ -136,25 +157,27 @@ for epoch in range(epochs):
                 total += labels.size(0)
 
                 # Total correct predictions
-                correct += (predicted == labels).sum()
+                correct += (predicted.cpu() == labels.cpu()).sum()
 
             accuracy = 100 * correct / total
-            print('Iteration: {}. Loss: {}. Accuracy: {}'.format(i, loss.data, accuracy))
+            print('Iteration: {}. Loss: {}. Accuracy: {}. \nPrediction: {}'.format(i, loss.item(), accuracy, predicted))
 
+print("Labels:    ", labels)
+print("Time elapsed:\n", datetime.now() - startTime)
 
+if saveModel:
+    # This saves only the parameters
+    torch.save(model.state_dict(), 'model.pkl')
 
+### Plot stuff ###
+plt.clf()
 
+# Plot true data that we know
+plt.plot(labels.tolist(), "go", label="True data", alpha=0.5)
 
+# Plot predicted data
+plt.plot(predicted.tolist(), "--", label="Predictions", alpha=0.5)
 
-
-
-
-
-
-
-
-
-# Displaying the image
-show_img = train_dataset[0][0].numpy().reshape(28, 28)
-plt.imshow(show_img, cmap='gray')
-plt.show()
+# Legend and plot show
+plt.legend(loc="best")
+plt.show()  # shows plot

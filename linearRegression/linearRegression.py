@@ -1,9 +1,12 @@
+# Made by ElleVen, Federico Cassano
+
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.autograd
 import torch.nn as nn
 from datetime import datetime
+
 usingGPU = True
 saveModel = False
 loadModel = False
@@ -24,11 +27,14 @@ class LinearRegressionModel(nn.Module):
 input_dim = 1
 output_dim = 1
 learning_rate = 0.001
-epochs = 1000
+epochs = 2000
 
 model = LinearRegressionModel(input_dim, output_dim)
 if torch.cuda.is_available() and usingGPU:
     model = model.cuda()
+
+if loadModel:
+    model.load_state_dict(torch.load('linearRegression/model.pkl'))
 
 criterion = nn.MSELoss()  # MSE Stands for Mean Squared Error
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
@@ -59,14 +65,20 @@ for epoch in range(epochs):
     # Convert numpy array to tensor
     # inputs = torch.tensor(torch.from_numpy(x_train), requires_grad=True)
     # labels = torch.tensor(torch.from_numpy(y_train), requires_grad=True)
-    inputs = torch.from_numpy(x_train)
-    inputs.requires_grad = True
-
-    labels = torch.from_numpy(y_train)
-    labels.requires_grad = True
     if torch.cuda.is_available() and usingGPU:
-        labels = labels.cuda()
+        inputs = torch.from_numpy(x_train)
+        inputs.requires_grad = True
         inputs = inputs.cuda()
+
+        labels = torch.from_numpy(y_train)
+        labels.requires_grad = True
+        labels = labels.cuda()
+    else:
+        inputs = torch.from_numpy(x_train)
+        inputs.requires_grad = True
+
+        labels = torch.from_numpy(y_train)
+        labels.requires_grad = True
 
     # Clears gradients w.r.t. parameters
     optimizer.zero_grad()
@@ -83,7 +95,7 @@ for epoch in range(epochs):
     # Updating parameters
     optimizer.step()
 
-    print("epoch {}, loss {}".format(epoch, loss.data))
+    print("epoch {}, loss {}".format(epoch, loss.item()))
 
 # Predicted values
 model = model.cpu()
@@ -91,12 +103,9 @@ predicted = model(torch.from_numpy(x_train)).data.numpy()
 print("Predicted values:\n", predicted)
 print("Time elapsed:\n", datetime.now() - startTime)
 
-if loadModel:
-    model.load_state_dict(torch.load('model.pkl'))
-
 if saveModel:
     # This saves only the parameters
-    torch.save(model.state_dict(), 'model.pkl')
+    torch.save(model.state_dict(), 'linearRegression/model.pkl')
 
 
 ### Plot stuff ###
