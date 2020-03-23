@@ -176,7 +176,7 @@ plt.clf()
 plt.plot(labels.tolist(), "go", label="True data", alpha=0.5)
 
 # Plot predicted data
-plt.plot(predicted.tolist(), "--", label="Predictions", alpha=0.5)
+plt.plot(predicted.tolist(), "-", label="Predictions", alpha=0.5)
 
 # Legend and plot show
 plt.legend(loc="best")

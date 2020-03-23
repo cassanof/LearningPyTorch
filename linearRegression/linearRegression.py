@@ -115,7 +115,7 @@ plt.clf()
 plt.plot(x_train, y_train, "go", label="True data", alpha=0.5)
 
 # Plot predicted data
-plt.plot(x_train, predicted, "--", label="Predictions", alpha=0.5)
+plt.plot(x_train, predicted, "-", label="Predictions", alpha=0.5)
 
 # Legend and plot show
 plt.legend(loc="best")
