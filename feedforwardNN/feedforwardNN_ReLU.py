@@ -4,7 +4,12 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torchvision.datasets as dsets
+import matplotlib.pyplot as plt
 from datetime import datetime
+
+usingGPU = False
+saveModel = False
+loadModel = False
 
 # TODO: Figure out why gpu is slower than cpu
 
@@ -25,6 +30,7 @@ class FeedforwardNeuralNetModel(nn.Module):
 
         # Linear function 3 (Readout) 100 --> 10
         self.fc3 = nn.Linear(hidden_dim, output_dim)
+        # you can put another hidden layer to make it more precise
 
     def forward(self, x):
         # Linear function
@@ -47,18 +53,24 @@ class FeedforwardNeuralNetModel(nn.Module):
 train_dataset = dsets.MNIST(root='./data', train=True, transform=transforms.ToTensor(), download=True)
 test_dataset = dsets.MNIST(root='./data', train=False, transform=transforms.ToTensor())
 
-batch_size = 100
+batch_size = 100  # here if we increase we can really see the power of gpu against cpu
+# 1000 bsize, 3000 iters : approx 2.24m GPU, approx 2.47m CPU
 n_iters = 3000
 epochs = int(n_iters / (len(train_dataset) / batch_size))
 
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
 
-input_dim = 28*28
+input_dim = 28 * 28
 hidden_dim = 100
 output_dim = 10
 
 model = FeedforwardNeuralNetModel(input_dim, hidden_dim, output_dim)
+if torch.cuda.is_available() and usingGPU:
+    model = model.cuda()
+
+if loadModel:
+    model.load_state_dict(torch.load('relumodel.pkl'))
 
 criterion = nn.CrossEntropyLoss()
 learning_rate = 0.1
@@ -69,8 +81,14 @@ startTime = datetime.now()
 for epoch in range(epochs):
     for j, (images, labels) in enumerate(train_loader):
         # Load images as tensor
-        images = torch.tensor(images.view(-1, 28 * 28))
-        labels = torch.tensor(labels)
+        if torch.cuda.is_available() and usingGPU:
+            images = torch.tensor(images.view(-1, 28 * 28))
+            images = images.cuda()
+            labels = torch.tensor(labels)
+            labels = labels.cuda()
+        else:
+            images = torch.tensor(images.view(-1, 28 * 28))
+            labels = torch.tensor(labels)
 
         # Clear gradients w.r.t. parameters
         optimizer.zero_grad()
@@ -95,7 +113,11 @@ for epoch in range(epochs):
             # Iterate through test dataset
             for images, labels in test_loader:
                 # load images to torch tensor
-                images = torch.tensor(images.view(-1, 28 * 28))
+                if torch.cuda.is_available() and usingGPU:
+                    images = torch.tensor(images.view(-1, 28 * 28))
+                    images = images.cuda()
+                else:
+                    images = torch.tensor(images.view(-1, 28 * 28))
 
                 # Forward pass only to get output/logits
                 outputs = model(images)
@@ -115,4 +137,19 @@ for epoch in range(epochs):
 print("Labels:    ", labels)
 print("Time elapsed:\n", datetime.now() - startTime)
 
+if saveModel:
+    # This saves only the parameters
+    torch.save(model.state_dict(), 'model.pkl')
 
+### Plot stuff ###
+plt.clf()
+
+# Plot true data that we know
+plt.plot(labels.tolist(), "go", label="True data", alpha=0.5)
+
+# Plot predicted data
+plt.plot(predicted.tolist(), "-", label="Predictions", alpha=0.5)
+
+# Legend and plot show
+plt.legend(loc="best")
+plt.show()  # shows plot
